@@ -16,6 +16,7 @@ from .univariate_selection import SelectFwe
 from .univariate_selection import GenericUnivariateSelect
 
 from .variance_threshold import VarianceThreshold
+from .correlation_threshold import CorrelationThreshold
 
 from .rfe import RFE
 from .rfe import RFECV
@@ -40,4 +41,5 @@ __all__ = ['GenericUnivariateSelect',
            'f_oneway',
            'f_regression',
            'mutual_info_classif',
-           'mutual_info_regression']
+           'mutual_info_regression',
+           'CorrelationThreshold']
