@@ -77,27 +77,36 @@ class CorrelationThreshold(BaseEstimator, SelectorMixin):
         -------
         self
         """
-        X = check_array(X, ('csr', 'csc'), dtype=np.float64)
-        self.correlations_ = abs(np.corrcoef(X.transpose()))
-
+        X = check_array(X, dtype=float)
         n_samples, n_features = X.shape
-        S = np.zeros(n_features)
+        S = np.zeros(n_features, dtype=int)
 
-        if y:
-            sb = SelectKBest(f_regression, "all").fit(X,y)
+        self.correlations_ = abs(np.corrcoef(X.transpose()))
+        self.correlations_[np.isnan(self.correlations_)] = 1
+
+        if y is not None:
+            sb = SelectKBest(f_regression, "all").fit(X, y)
             I_xc = sb.pvalues_
+            I_xc[np.isnan(I_xc)] = -1
         else:
             I_xc = np.zeros(n_features)
 
         S[np.argmax(I_xc)] = 1
 
-        while sum(S) <= self.n_features:
+        while sum(S) < self.n_features:
             # filter by threshold:
-            S_mask = self.correlations_[S == 1, :].max(axis=0) < self.threshold
-
-            # iteratively add an x_i:
-            best_i = np.argmax((I_xc - self.correlations_[S == 1, :].sum(axis=0))[S_mask])
-            S[np.where(S_mask)[best_i]] = 1
+            S_mask = self.correlations_[S == 1, :].max(axis=0) < (self.threshold - 1.e-8)
+            # In case no value fulfills the threshold
+            if not np.any(S_mask):
+                break
+            else:
+                # iteratively add an x_i:
+                best_i = np.argmax((I_xc - 1./sum(S)*self.correlations_[S == 1, :].sum(axis=0))[S_mask])
+                if S[np.where(S_mask)[0][best_i]] == 1:
+                    print ("ERROR - trying to set the same value twice")
+                    break
+                else:
+                    S[np.where(S_mask)[0][best_i]] = 1
 
         self.mask = S
 
@@ -108,4 +117,4 @@ class CorrelationThreshold(BaseEstimator, SelectorMixin):
     def _get_support_mask(self):
         check_is_fitted(self)
 
-        return self.mask
+        return self.mask == 1
